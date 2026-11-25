@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="FinWise">
-<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" href="icons/icon-192.png">
 <style>
 :root{--bg:#0b0d10;--card:#151a20;--card2:#1d242c;--tx:#f2efe6;--mut:#8f98a3;--gold:#e8b84a;--gold2:#a8801f;--grn:#38c98a;--red:#ef5b5b;--bd:#262e37;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -79,7 +79,8 @@ function draw(){const m=now().slice(0,7),s=sums(m),v=$("#v"),all=sums(),G=S.gold
  <div class="card gold"><div style="opacity:.7;font-size:12px">Total kekayaan</div><div class="big">${R(all.i-all.o+gv)}</div><div style="font-size:12px;opacity:.75">Kas ${R(all.i-all.o)} · Emas ${R(gv)}</div></div>
  <div class="g2"><div class="card"><div class="mut">Pemasukan bulan ini</div><b class="pos">${R(s.i)}</b></div><div class="card"><div class="mut">Pengeluaran bulan ini</div><b class="neg">${R(s.o)}</b></div></div>
  <div class="card"><h2>Pengeluaran per kategori</h2>${donut(m)}</div>
- <div class="card"><h2>Terbaru</h2>${S.tx.slice(-4).reverse().map(row).join("")||'<p class="mut">Belum ada transaksi.</p>'}</div>`}
+ <div class="card"><h2>Terbaru</h2>${S.tx.slice(-4).reverse().map(row).join("")||'<p class="mut">Belum ada transaksi.</p>'}</div>
+ <div class="card"><h2>🔗 Sinkron &amp; Bot Telegram</h2><input id="cu" placeholder="URL Apps Script (.../exec)" value="${cfg().url||""}"><input id="ck" type="password" placeholder="Kode sinkron" value="${cfg().key||""}"><div class="g2"><button class="btn o" onclick="saveCfg()">Simpan</button><button class="btn" onclick="sync()">Sinkron</button></div><p class="mut" id="sm">${cfg().t?"Terakhir sinkron: "+cfg().t:"Belum tersambung."}</p></div>`}
  if(tab=="tx"){h=`<div class="card"><h2>Tambah transaksi</h2><div class="g2"><select id="k" onchange="kk()"><option value="out">Pengeluaran</option><option value="in">Pemasukan</option></select><select id="c">${CAT.map(c=>`<option>${c}</option>`)}</select></div><input id="a" type="number" inputmode="numeric" placeholder="Jumlah (Rp)"><input id="n" placeholder="Catatan"><input id="d" type="date" value="${now()}"><button class="btn" style="width:100%;margin-top:6px" onclick="addTx()">Simpan</button></div>
  <div class="card"><h2>Riwayat</h2><input id="q" placeholder="Cari catatan/kategori" oninput="flt()"><div id="lst">${S.tx.slice().reverse().map(row).join("")||'<p class="mut">Kosong.</p>'}</div></div>`}
  if(tab=="gold"){const pl=gv-G.cost;h=`<div class="card gold"><div class="row"><span style="font-size:12px"><span class="live"></span>Harga emas per gram (otomatis)</span><span id="ts" style="font-size:11px;opacity:.7"></span></div><div class="big" id="gp">${R(P)}</div>${spark()}</div>
@@ -96,15 +97,23 @@ function draw(){const m=now().slice(0,7),s=sums(m),v=$("#v"),all=sums(),G=S.gold
 function row(t){return`<div class="item"><div><div>${t.c}${t.n?" · "+t.n:""}</div><div class="mut">${t.d}</div></div><div><b class="${t.k=="in"?"pos":"neg"}">${t.k=="in"?"+":"-"}${R(t.a)}</b> <button class="x" onclick="del(${t.id})">✕</button></div></div>`}
 function kk(){const c=$("#c");if(!c)return;const l=$("#k").value=="in"?INC:CAT;c.innerHTML=l.map(x=>`<option>${x}</option>`).join("")}
 function addTx(){const a=+$("#a").value;if(!(a>0))return;S.tx.push({id:Date.now(),k:$("#k").value,c:$("#c").value,a,n:$("#n").value,d:$("#d").value||now()});S.tx.sort((x,y)=>x.d<y.d?-1:1);save();draw()}
-function del(id){S.tx=S.tx.filter(t=>t.id!=id);save();draw()}
+function del(id){S.tx=S.tx.filter(t=>t.id!=id);(S.dels=S.dels||[]).push(id);save();draw()}
 function flt(){const q=$("#q").value.toLowerCase();$("#lst").innerHTML=S.tx.filter(t=>(t.c+" "+t.n).toLowerCase().includes(q)).reverse().map(row).join("")}
-function gold(b){const g=+$("#gg").value;if(!(g>0))return;const G=S.gold;if(b){G.g+=g;G.cost+=g*P}else{if(g>G.g){alert("Emas tidak cukup.");return}G.cost-=G.cost*(g/G.g);G.g-=g}save();draw()}
+function gold(b){const g=+$("#gg").value;if(!(g>0))return;const G=S.gold;if(b){G.g+=g;G.cost+=g*P}else{if(g>G.g){alert("Emas tidak cukup.");return}G.cost-=G.cost*(g/G.g);G.g-=g}(S.gops=S.gops||[]).push({id:Date.now(),d:now(),g:b?g:-g,p:P});save();draw()}
 function setB(c){const v=prompt("Batas anggaran "+c+" (Rp)",S.bud[c]||0);if(v!==null){S.bud[c]=+v||0;save();draw()}}
 function newG(){const n=$("#gn").value.trim(),t=+$("#gt").value;if(n&&t>0){S.goals.push({n,t,s:0});save();draw()}}
 function addG(i){const v=+prompt("Jumlah setoran (Rp)");if(v>0){S.goals[i].s+=v;save();draw()}}
 function csv(){const t="tanggal,jenis,kategori,jumlah,catatan\n"+S.tx.map(x=>[x.d,x.k,x.c,x.a,'"'+(x.n||"")+'"'].join(",")).join("\n");const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,"+encodeURIComponent(t);a.download="finwise.csv";a.click()}
+const cfg=()=>ld("fw_cfg",{});
+function saveCfg(){sv("fw_cfg",{...cfg(),url:$("#cu").value.trim(),key:$("#ck").value.trim()});$("#sm").textContent="Tersimpan."}
+async function sync(){saveCfg();const c=cfg();if(!c.url||!c.key){$("#sm").textContent="Isi URL dan kode dulu.";return}
+ $("#sm").textContent="Menyinkronkan...";
+ try{const r=await fetch(c.url,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify({key:c.key,action:"sync",tx:S.tx,gops:S.gops||[],dels:S.dels||[]})});const j=await r.json();
+ if(j.err){$("#sm").textContent=j.err;return}
+ S.tx=j.tx;S.gold=j.gold;S.gops=[];S.dels=[];if(j.real){sv("fw_real",1);P=j.price;sv("fw_price",{p:P})}
+ const t=new Date().toLocaleString("id-ID");sv("fw_cfg",{...c,t});save();draw()}catch(e){$("#sm").textContent="Gagal sinkron: "+e.message}}
 // Harga emas: simulasi pembaruan otomatis tiap 5 detik
-setInterval(()=>{if(!U)return;P*=1+(Math.random()-.5)*.003;H.push(P);H=H.slice(-30);sv("fw_price",{p:P});sv("fw_hist",H);
+setInterval(()=>{if(!U)return;P*=ld("fw_real",0)?1:1+(Math.random()-.5)*.003;H.push(P);H=H.slice(-30);sv("fw_price",{p:P});sv("fw_hist",H);
  if(tab=="gold"){const e=$("#gp");if(e){e.textContent=R(P);$("#ts").textContent=new Date().toLocaleTimeString("id-ID")}}},5000);
 const ss=ld("fw_sess","");if(ss&&ld("fw_users",{})[ss])start(ss);
 </script><script>if("serviceWorker"in navigator)addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}))</script></body></html>
